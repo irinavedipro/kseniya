@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fire of Life — Диагностика</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* FONTS - Пути изменены на папку images */
+        @font-face {
+            font-family: 'Vela Sans';
+            src: url('./images/VelaSans-Regular.ttf') format('truetype');
+            font-weight: 400;
+        }
+        @font-face {
+            font-family: 'Vela Sans';
+            src: url('./images/VelaSans-Bold.ttf') format('truetype');
+            font-weight: 700;
+        }
+
+        body { 
+            font-family: 'Vela Sans', 'Manrope', sans-serif;
+            margin: 0; padding: 0; background-color: #0f0e17; overflow: hidden; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        h1, h2, h3, h4, .serif { font-family: 'Cormorant Garamond', serif; letter-spacing: 0.02em; }
+        
+        /* Умный перенос текста для избежания висячих строк */
+        .text-pretty { text-wrap: pretty; }
+        .text-balance { text-wrap: balance; }
+        
+        /* Animations */
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes zoom-slow { from { transform: scale(1); } to { transform: scale(1.08); } }
+        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.12); opacity: 1; } }
+        @keyframes rise { 
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; } 
+            20% { opacity: 0.5; } 
+            100% { transform: translateY(-20vh) scale(1.2); opacity: 0; } 
+        }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        
+        /* Мягкое свечение для иконок на финальном экране */
+        @keyframes pulse-glow { 
+            0%, 100% { transform: scale(1); opacity: 0.2; } 
+            50% { transform: scale(1.15); opacity: 0.45; } 
+        }
+
+        .animate-fade-in-up { animation: fade-in-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .animate-zoom { animation: zoom-slow 20s ease-in-out infinite alternate; }
+        .animate-breathe { animation: breathe 5s ease-in-out infinite; }
+        .animate-rise { animation: rise 15s infinite linear; }
+        .animate-spin-slow { animation: spin-slow 20s linear infinite; }
+        .animate-spin-reverse { animation: spin-reverse 25s linear infinite; }
+        .animate-pulse-glow { animation: pulse-glow 4s ease-in-out infinite; }
+        
+        .glass-card { backdrop-filter: blur(20px); transition: all 0.3s ease; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+        .mandala-container {
+            position: relative; border-radius: 50%; overflow: hidden; aspect-ratio: 1/1;
+            transition: all 0.5s ease; cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .mandala-container:active { transform: scale(0.96); }
+
+        .mandala-glow-light:hover {
+            box-shadow: 0 0 40px rgba(158, 42, 43, 0.5);
+            border-color: rgba(158, 42, 43, 0.6);
+            transform: scale(1.02);
+        }
+
+        .mandala-glow-dark:hover {
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.5);
+            border-color: rgba(212, 175, 55, 0.6);
+            transform: scale(1.02);
+        }
+
+        .btn-primary { position: relative; overflow: hidden; transition: all 0.3s ease; }
+        .btn-primary:active { transform: scale(0.98); }
+
+        .logo-img { max-width: 220px; height: auto; object-fit: contain; }
+        
+        .sparkle {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- УМНЫЙ ТИПОГРАФ ---
+        const formatText = (str) => {
+            if (!str) return '';
+            return str.replace(/(^|\s)(в|без|до|для|за|через|над|по|из|у|около|под|о|про|на|к|перед|при|с|между|а|и|да|но|или|либо|что|как|если|то|не|ни|же)\s/gi, '$1$2\u00A0');
+        };
+
+        // --- ICONS (SVG) ---
+        const Icon = {
+            Sun: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>),
+            Moon: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>),
+            ArrowLeft: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>),
+            ArrowRight: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>),
+            Heart: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>),
+            Coins: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18.06"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>),
+            Rocket: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09Z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2Z"/><path d="M9 12H4s.5-1 1-4c2 0 5 2.5 5 2.5Z"/><path d="M12 15v5s1-.5 4-1c0-2-2.5-5-2.5-5Z"/></svg>),
+            Flower: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 16.5c0-4.5 4.5-4.5 4.5-4.5s0-4.5-4.5-4.5-4.5 4.5-4.5 4.5 4.5 4.5 4.5 4.5Z"/><path d="M12 7.5c-4.5 0-4.5 4.5-4.5 4.5s4.5 0 4.5-4.5 4.5 4.5 4.5 4.5-4.5 0-4.5-4.5Z"/></svg>),
+            Infinity: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg>),
+            Flame: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 4 6.5 2 2 3 5.5 3 8.5a7 7 0 1 1-14 0c0-3 2.5-6 4.5-8.5.5.75 1 1.25 1 2.5a2.5 2.5 0 0 1-2.5 2.5Z"/></svg>),
+            Gift: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5H12Z"/></svg>),
+            Sparkles: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M21 17v4"/><path d="M19 19h4"/></svg>),
+            RotateCcw: (p) => (<svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>)
+        };
+
+        const THEMES = {
+            dark: { id: 'dark', bg: '#1C1B22', bgGradient: 'linear-gradient(135deg, #1C1B22 0%, #2A2530 50%, #15141A 100%)', text: '#EADDCD', accent: '#D4AF37', secondary: '#A3998D', cardBg: 'rgba(28, 27, 34, 0.7)', cardBorder: 'rgba(212, 175, 55, 0.2)', buttonText: '#1C1B22', mandalaBg: 'rgba(212, 175, 55, 0.05)' },
+            light: { id: 'light', bg: '#F9F7F2', bgGradient: 'linear-gradient(135deg, #F9F7F2 0%, #F2EFE9 50%, #F9F7F2 100%)', text: '#2D2A32', accent: '#9E2A2B', secondary: '#7A7269', cardBg: 'rgba(255, 255, 255, 0.75)', cardBorder: 'rgba(158, 42, 43, 0.15)', buttonText: '#ffffff', mandalaBg: 'rgba(158, 42, 43, 0.05)' }
+        };
+
+        // --- 1. SPHERES CONFIGURATION ---
+        const SPHERES = [
+            { id: 'love', title: 'Любовь и отношения', icon: Icon.Heart },
+            { id: 'finance', title: 'Финансовое благополучие', icon: Icon.Coins },
+            { id: 'realization', title: 'Реализация и проявленность', icon: Icon.Rocket },
+            { id: 'health', title: 'Здоровье и восстановление', icon: Icon.Flower },
+            { id: 'balance', title: 'Баланс и личная сила', icon: Icon.Infinity }
+        ];
+
+        // --- 2. MANDALAS DATABASE ---
+        const STATES_DB = {
+            dignity: { id: 'dignity', title: 'Достоинство', candle: 'Королева', link: 'https://t.me/vselennai_balansa/4', img: 'dignity' },
+            sensuality: { id: 'sensuality', title: 'Чувственность', candle: 'Чувственность', link: 'https://t.me/vselennai_balansa/5', img: 'sensuality' },
+            balance: { id: 'balance', title: 'Баланс', candle: 'Баланс', link: 'https://t.me/vselennai_balansa/6', img: 'balance' },
+            support: { id: 'support', title: 'Опора', candle: 'Стабильность', link: 'https://t.me/vselennai_balansa/7', img: 'support' },
+            relax: { id: 'relax', title: 'Расслабление', candle: 'Релакс', link: 'https://t.me/vselennai_balansa/8', img: 'relax' },
+            movement: { id: 'movement', title: 'Движение', candle: 'Сафари', link: 'https://t.me/vselennai_balansa/9', img: 'movement' },
+            freedom: { id: 'freedom', title: 'Свобода', candle: 'Свобода', link: 'https://t.me/vselennai_balansa/10', img: 'freedom' },
+            clarity: { id: 'clarity', title: 'Ясность', candle: 'Ничего лишнего', link: 'https://t.me/vselennai_balansa/11', img: 'clarity' },
+            passion: { id: 'passion', title: 'Страсть', candle: 'Ночь любви', link: 'https://t.me/vselennai_balansa/12', img: 'passion' }, 
+            liberation: { id: 'liberation', title: 'Освобождение', candle: 'Стоп Негатив', link: 'https://t.me/vselennai_balansa/13', img: 'liberation' }
+        };
+
+        // --- 3. LOGIC ---
+        const getMandalasForSphere = (sphereId) => {
+            const common = ['dignity', 'sensuality', 'balance', 'support', 'relax', 'liberation', 'clarity'];
+            if (sphereId === 'love') return [...common, 'passion']; 
+            if (sphereId === 'balance') return [...common, 'passion', 'freedom']; 
+            return [...common, 'movement']; 
+        };
+
+        // --- 4. TEXT MATRIX ---
+        const CONTENT = {
+            love: {
+                dignity: "Когда в любви не хватает достоинства, женщина соглашается на меньшее, чем хочет на самом деле.\n\nОна терпит, подстраивается, боится потерять.\n\nИз этого состояния сложно выстроить отношения, в которых есть уважение и выбор.",
+                sensuality: "Когда не хватает чувственности, любовь уходит в голову.\n\nОтношения становятся правильными, но холодными.\n\nТело выключено, близость теряет живость и притяжение.",
+                balance: "Когда нет баланса, женщина берёт на себя слишком много.\n\nКонтроль вытесняет доверие, отношения становятся тяжёлыми.\n\nЛюбовь перестаёт быть пространством поддержки.",
+                support: "Без внутренней опоры любовь строится из страха.\n\nПоявляется тревога, эмоциональные качели, зависимость.\n\nОтношения теряют устойчивость.",
+                relax: "Когда нет расслабления, тело закрыто.\n\nБлизость ощущается как напряжение или риск.\n\nЖенщине сложно быть открытой и принимающей.",
+                liberation: "Прошлые обиды и незавершённые отношения продолжают влиять на настоящее.\n\nСердце занято прошлым, и новому сложно прийти.\n\nЛюбовь застревает.",
+                passion: "Когда нет огня, отношения становятся формальными.\n\nПропадает интерес, тепло, живой отклик.\n\nЛюбовь теряет вкус.",
+                clarity: "Без ясности женщина путается в ожиданиях и фантазиях.\n\nТеряется контакт с телом и интуицией.\n\nВыбор партнёра становится неосознанным."
+            },
+            finance: {
+                dignity: "Когда в деньгах не хватает достоинства, женщина занижает свою ценность.\n\nБоится просить больше, соглашается на невыгодные условия.\n\nДеньги приходят нестабильно.",
+                sensuality: "Когда нет чувственности, деньги зарабатываются через напряжение.\n\nПроцесс не приносит удовольствия, быстро приходит выгорание.\n\nПоток денег пересыхает.",
+                balance: "Гиперконтроль и стратегия «я сама» истощают.\n\nДеньги есть, но ценой себя.\n\nРадость и устойчивость теряются.",
+                support: "Без опоры много суеты и хаотичных действий.\n\nУсилия не дают результата.\n\nФинансы нестабильны.",
+                relax: "Тревога и напряжение мешают видеть возможности.\n\nФинансовые решения принимаются из страха.\n\nПоявляются ошибки и откаты.",
+                liberation: "Прошлые неудачи и разочарования продолжают влиять.\n\nЖенщина боится повторения опыта.\n\nРост блокируется.",
+                movement: "Когда нет огня, нет импульса действовать.\n\nЖенщина застревает в ожидании.\n\nДеньги не двигаются.",
+                clarity: "Без ясности внимание распыляется.\n\nМного задач, мало результата.\n\nДеньги теряются в хаосе."
+            },
+            realization: {
+                dignity: "Женщина боится заявлять о себе.\n\nОбесценивает опыт, сравнивает себя с другими.\n\nПроявленность блокируется.",
+                sensuality: "Реализация превращается в обязанность.\n\nНет удовольствия и вкуса.\n\nПроекты выглядят «пустыми».",
+                balance: "Перекос между действием и ожиданием.\n\nЖенщина либо выгорает, либо застревает.\n\nПроцессы не движутся.",
+                support: "Нет системы и устойчивости.\n\nИдеи не доводятся до результата.\n\nРеализация рассыпается.",
+                relax: "Напряжение блокирует креативность.\n\nСтрах ошибок мешает выходить в мир.\n\nПоток идей закрывается.",
+                liberation: "Прошлый опыт и страхи держат.\n\nЖенщина не позволяет себе новый уровень.\n\nРост замедляется.",
+                movement: "Нет внутреннего отклика и интереса.\n\nПроявленность становится механической.\n\nЖизнь не поддерживает.",
+                clarity: "Слишком много направлений.\n\nНет фокуса и приоритетов.\n\nПроявленность теряет силу."
+            },
+            health: {
+                dignity: "Женщина игнорирует сигналы тела.\n\nСтавит себя на последнее место.\n\nВосстановление откладывается.",
+                sensuality: "Нет контакта с телом.\n\nСложно почувствовать, что нужно именно сейчас.\n\nВосстановление поверхностное.",
+                balance: "Качели между перегрузом и отдыхом.\n\nНет ритма.\n\nТело не успевает восстановиться.",
+                support: "Нет режима и устойчивых привычек.\n\nТело не чувствует безопасности.\n\nСостояние нестабильное.",
+                relax: "Хроническое напряжение и зажимы.\n\nНервная система перегружена.\n\nСон и отдых не восстанавливают.",
+                liberation: "Тело хранит непрожитые эмоции.\n\nСимптомы возвращаются.\n\nЛёгкость не приходит.",
+                movement: "Нет жизненного тонуса.\n\nВялость и апатия.\n\nТело «гаснет».",
+                clarity: "Слишком много методов и советов.\n\nТело теряется в информации.\n\nНет простоты."
+            },
+            balance: {
+                dignity: "Женщина теряет себя в ролях.\n\nЖивёт из «надо».\n\nСила распадается.",
+                sensuality: "Тело выключено.\n\nСила уходит в контроль.\n\nНет живости.",
+                balance: "Постоянное удерживание.\n\nНет внутреннего равновесия.\n\nСила выгорает.",
+                support: "Ощущение рассыпанности.\n\nНет устойчивости внутри.\n\nСложно держать курс.",
+                relax: "Сила уходит в напряжение.\n\nНет ощущения ресурса.\n\nТело в режиме выживания.",
+                liberation: "Сила связана прошлым.\n\nЭнергия удерживается страхами.\n\nНет пространства для нового.",
+                passion: "Потеря интереса к жизни.\n\nСила без тепла.\n\nНет отклика.",
+                clarity: "Расфокус и суета.\n\nСила распыляется.\n\nНет собранности.",
+                freedom: "Твоя личная сила готова к расширению. Это состояние «мне можно»: больше, по-другому, на новом уровне."
+            }
+        };
+
+        // --- COMPONENTS ---
+
+        const ProgressBar = ({ current, total, theme }) => {
+            const progress = (current / total) * 100;
+            return (
+                <div className="absolute top-0 left-0 right-0 z-50">
+                <div 
+                    className="h-1 transition-all duration-700 ease-out"
+                    style={{
+                    width: `${progress}%`,
+                    background: `linear-gradient(90deg, ${theme.accent}, ${theme.accentLight})`,
+                    boxShadow: `0 0 15px ${theme.accent}80`
+                    }}
+                />
+                </div>
+            );
+        };
+
+        const BackButton = ({ onClick, theme }) => (
+            <button
+                onClick={onClick}
+                className="absolute top-6 left-6 z-40 w-10 h-10 rounded-full glass-card flex items-center justify-center group border hover:scale-105"
+                style={{ 
+                background: theme.cardBg,
+                borderColor: theme.cardBorder 
+                }}
+            >
+                <Icon.ArrowLeft 
+                className="w-5 h-5 transition-transform group-hover:-translate-x-1" 
+                style={{ color: theme.text }} 
+                />
+            </button>
+        );
+
+        // --- SCREENS ---
+
+        const ScreenIntro = ({ onSelectTheme }) => {
+            return (
+                <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center relative bg-[#0f0e17] overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1a1625] via-[#0f0e17] to-[#0a0a0f]"></div>
+                
+                {/* АНИМАЦИЯ ИСКР */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                     {[...Array(25)].map((_, i) => (
+                        <div key={i} className="sparkle animate-rise" style={{ left: `${Math.random()*100}%`, width: `${1+Math.random()*2}px`, height: `${1+Math.random()*2}px`, animationDuration: `${6+Math.random()*10}s`, animationDelay: `${Math.random()*5}s` }} />
+                     ))}
+                </div>
+                
+                <div className="relative z-10 w-full flex flex-col items-center animate-fade-in-up">
+                    
+                    {/* ЛОГОТИП */}
+                    <div className="mb-20 flex flex-col items-center gap-4">
+                         <img 
+                            src="./images/logo.png" 
+                            alt="Fire of Life" 
+                            className="logo-img drop-shadow-xl w-[220px]" 
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'block';
+                            }}
+                         />
+                         <h1 style={{display:'none'}} className="elegant text-4xl text-[#EADDCD] tracking-[0.3em] font-light">Fire of Life</h1>
+                         <div className="h-px w-28 bg-[#D4AF37]/40"></div>
+                    </div>
+                    
+                    {/* АМУЛЕТЫ */}
+                    <div className="flex justify-center items-center gap-10 w-full mb-16">
+                        
+                        {/* Амулет Солнца */}
+                        <button onClick={() => onSelectTheme('light')} className="group relative w-32 h-32 rounded-full focus:outline-none flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full bg-[#fcd34d] opacity-20 group-hover:opacity-40 blur-2xl transition-opacity duration-700"></div>
+                            <div className="absolute inset-1 rounded-full border border-[#D4AF37]/40 border-dashed animate-spin-slow"></div>
+                            
+                            <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#fffbeb] via-[#fef3c7] to-[#fcd34d] shadow-[0_0_30px_rgba(251,191,36,0.3)] flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover:scale-105">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-[#fbbf24]/50 to-transparent opacity-60"></div>
+                                <Icon.Sun className="relative z-10 w-10 h-10 text-[#b45309] animate-spin-slow" />
+                            </div>
+                        </button>
+
+                        {/* Амулет Луны */}
+                        <button onClick={() => onSelectTheme('dark')} className="group relative w-32 h-32 rounded-full focus:outline-none flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full bg-[#818cf8] opacity-10 group-hover:opacity-30 blur-2xl transition-opacity duration-700"></div>
+                            <div className="absolute inset-1 rounded-full border border-[#c7d2fe]/30 border-dotted animate-spin-reverse"></div>
+                            
+                            <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#312e81] to-[#1e1b4b] shadow-[0_0_30px_rgba(129,140,248,0.2)] flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover:scale-105">
+                                <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent opacity-80"></div>
+                                <Icon.Moon className="relative z-10 w-9 h-9 text-[#c7d2fe] animate-breathe" />
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+        };
+
+        const ScreenSphere = ({ onSelect, theme }) => (
+            <div className="h-full flex flex-col pt-16 px-8 relative">
+                {/* Анимационный фон для живости экрана */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                    <div className="absolute top-[-10%] left-[-10%] w-64 h-64 rounded-full mix-blend-screen filter blur-[80px] opacity-20 animate-breathe" style={{background: theme.accent, animationDuration: '8s'}}></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 rounded-full mix-blend-screen filter blur-[80px] opacity-10 animate-breathe" style={{background: theme.accent, animationDuration: '12s'}}></div>
+                    {[...Array(15)].map((_, i) => (
+                        <div key={i} className="sparkle animate-rise" style={{ left: `${Math.random()*100}%`, width: `${1+Math.random()*2}px`, height: `${1+Math.random()*2}px`, animationDuration: `${6+Math.random()*10}s`, animationDelay: `${Math.random()*5}s` }} />
+                     ))}
+                </div>
+
+                <div className="mb-10 shrink-0 text-center relative z-10 animate-fade-in-up">
+                    <h2 style={{color: theme.text}} className="text-3xl leading-tight serif font-medium text-balance">Выбери сферу жизни,<br/>в которой ты хочешь движения и улучшений</h2>
+                    <p style={{color: theme.secondary}} className="text-sm mt-4 font-light text-pretty">Не анализируй. Просто выбери то, что сейчас важно.</p>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto scrollbar-hide pb-12 relative z-10">
+                    <div className="flex flex-col gap-4">
+                        {SPHERES.map((sphere, i) => (
+                            <button 
+                                key={sphere.id} 
+                                onClick={() => onSelect(sphere)}
+                                className="glass-card w-full p-6 rounded-2xl border flex items-center gap-6 text-left group animate-fade-in-up"
+                                style={{ 
+                                    background: theme.cardBg, 
+                                    borderColor: theme.cardBorder,
+                                    animationDelay: `${i * 0.1}s`,
+                                    animationFillMode: 'both'
+                                }}
+                            >
+                                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all group-hover:scale-110 shadow-sm" style={{color: theme.accent, background: theme.mandalaBg}}>
+                                    <sphere.icon className="w-6 h-6" />
+                                </div>
+                                <span style={{color: theme.text}} className="text-lg serif font-medium flex-1 leading-tight">{sphere.title}</span>
+                                <Icon.ArrowRight className="w-4 h-4 opacity-30 group-hover:translate-x-1 transition-transform" style={{color: theme.text}} />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ScreenMandala = ({ sphereId, onSelect, onBack, theme }) => {
+            const mandalasForSphere = getMandalasForSphere(sphereId);
+            const displayMandalas = mandalasForSphere.map(id => STATES_DB[id]).filter(Boolean);
+            
+            const glowClass = theme.id === 'light' ? 'mandala-glow-light' : 'mandala-glow-dark';
+
+            return (
+                <div className="h-full flex flex-col pt-16 px-8 relative animate-fade-in-up">
+                    <button onClick={onBack} className="absolute top-6 left-6 p-2 rounded-full border transition-all hover:scale-110 active:scale-95 z-20" style={{borderColor: theme.cardBorder, color: theme.text, background: theme.cardBg}}>
+                        <Icon.ArrowLeft className="w-5 h-5" />
+                    </button>
+                    
+                    <div className="mb-8 shrink-0 text-center">
+                        <h2 style={{color: theme.text}} className="text-3xl leading-tight serif font-medium mb-3 text-balance">Посмотри на мандалы и выбери ту, которая откликается</h2>
+                        <p style={{color: theme.secondary}} className="text-sm font-light text-pretty">Не думай. Выбирай телом.</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 -mx-4 px-4">
+                        <div className="grid grid-cols-2 gap-6">
+                            {displayMandalas.map((m, i) => {
+                                const imgBaseName = m.img || m.id;
+                                return (
+                                    <div 
+                                        key={m.id} 
+                                        onClick={() => onSelect(m)} 
+                                        className={`mandala-container group shadow-xl ${glowClass} animate-fade-in-up`} 
+                                        style={{ 
+                                            animationDelay: `${i * 0.05}s`, 
+                                            background: theme.id === 'dark' ? '#121217' : '#fff',
+                                            animationFillMode: 'both'
+                                        }}
+                                    >
+                                        <img 
+                                            src={`./images/${imgBaseName}_${theme.id}.png`} 
+                                            alt={m.title} 
+                                            className="w-full h-full object-cover transition-transform duration-[8s] group-hover:scale-115" 
+                                            onError={(e) => { 
+                                                if (!e.target.src.includes('dignity')) e.target.src = `./images/dignity_${theme.id}.png`;
+                                                else e.target.style.display='none'; 
+                                            }} 
+                                        />
+                                        <div className="absolute inset-0 flex items-center justify-center -z-10">
+                                           <Icon.Sparkles className="w-8 h-8 opacity-20" style={{color: theme.accent}}/>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ScreenSync = ({ onComplete, theme }) => {
+            const [text, setText] = useState("Сделай медленный вдох и выдох");
+            useEffect(() => {
+                const timer = setTimeout(onComplete, 6000);
+                const interval = setInterval(() => setText(t => t.includes("вдох") ? "Позволь себе немного замедлиться" : "Сделай медленный вдох и выдох"), 3000);
+                return () => { clearTimeout(timer); clearInterval(interval); };
+            }, []);
+            return (
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in-up">
+                    <div className="relative w-64 h-64 mb-16 flex items-center justify-center">
+                        <div className="absolute inset-0 rounded-full opacity-20 animate-breathe" style={{background: theme.accent, filter: 'blur(40px)'}}></div>
+                        <div className="absolute inset-10 rounded-full opacity-30 animate-breathe" style={{background: theme.accent, filter: 'blur(20px)', animationDelay: '0.5s'}}></div>
+                        <Icon.Heart className="w-24 h-24 animate-breathe" style={{color: theme.text, fill: `${theme.accent}30`}} />
+                    </div>
+                    <h2 style={{color: theme.text}} className="text-2xl serif mb-3 tracking-widest uppercase font-medium text-balance">{text}</h2>
+                    <p style={{color: theme.secondary}} className="text-sm font-light opacity-60 text-pretty">перед тем, как увидеть ответ.</p>
+                </div>
+            );
+        };
+
+        const ScreenResult = ({ sphere, mandala, theme, onRestart }) => {
+            const description = CONTENT[sphere.id]?.[mandala.id] || "Текст формируется...";
+            
+            const practiceMsg = encodeURIComponent(`Ксения, привет 🤍\nЯ прошла диагностику Fire of Life.\nМоя сфера: ${sphere.title}\nМоё состояние: ${mandala.title}\nХочу получить практику для пробуждения этого состояния.`);
+            const practiceUrl = `https://t.me/kseniia_burakova?text=${practiceMsg}`;
+            
+            const buyUrl = mandala.link;
+            const imgBaseName = mandala.img || mandala.id;
+
+            return (
+                <div className="h-full w-full overflow-y-auto scrollbar-hide relative">
+                    <div className="flex flex-col items-center py-16 px-8 min-h-full text-center">
+                        
+                        <div className="animate-fade-in-up w-full text-center" style={{animationDelay: '0.1s', animationFillMode: 'both'}}>
+                            <p style={{color: theme.secondary}} className="text-[10px] tracking-[0.3em] uppercase mb-4 opacity-70">Твоё ключевое состояние сейчас</p>
+                            <h2 style={{color: theme.accent}} className="text-5xl serif font-medium mb-12 drop-shadow-md text-balance">{mandala.title}</h2>
+                        </div>
+                        
+                        {/* RESULT MANDALA */}
+                        <div 
+                            className="relative w-72 h-72 mb-12 shrink-0 animate-zoom shadow-2xl rounded-full border-4 overflow-hidden animate-fade-in-up mx-auto" 
+                            style={{borderColor: `${theme.accent}30`, background: '#000', animationDelay: '0.2s', animationFillMode: 'both'}}
+                        >
+                             <img 
+                                src={`./images/${imgBaseName}_${theme.id}.png`} 
+                                className="w-full h-full object-cover rounded-full" 
+                                onError={(e) => { 
+                                    if(!e.target.src.includes('dignity')) e.target.src = `./images/dignity_${theme.id}.png`; 
+                                }} 
+                             />
+                             <div className="absolute inset-0 rounded-full shadow-[0_0_70px_rgba(212,175,55,0.25)] animate-pulse pointer-events-none"></div>
+                        </div>
+
+                        {/* DESCRIPTION BLOCK */}
+                        <div className="w-full max-w-md rounded-3xl p-8 mb-8 shadow-xl border text-center animate-fade-in-up" style={{background: theme.cardBg, borderColor: theme.cardBorder, animationDelay: '0.3s', animationFillMode: 'both'}}>
+                            <p style={{color: theme.text}} className="text-base leading-relaxed opacity-90 mb-8 font-bold text-pretty">
+                                {formatText(`Ты можешь много делать в сфере «${sphere.title.toLowerCase()}», но если внутри не хватает этого состояния, ощущение, что пазл не складывается.`)}
+                            </p>
+                            
+                            <div className="text-base leading-relaxed font-light opacity-90 space-y-5 text-center text-pretty" style={{color: theme.text}}>
+                                {description.split('\n\n').map((line, i) => (
+                                    <p key={i}>{formatText(line)}</p>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* PRODUCT BLOCK */}
+                        <div className="w-full max-w-md rounded-3xl p-8 mb-10 border flex flex-col items-center gap-6 text-center animate-fade-in-up" style={{background: theme.id==='light' ? '#fff' : 'rgba(255,255,255,0.03)', borderColor: theme.cardBorder, animationDelay: '0.4s', animationFillMode: 'both'}}>
+                            <p style={{color: theme.text}} className="text-sm font-light leading-relaxed opacity-80 text-pretty">
+                                {formatText("Аромат влияет на ту часть нас, которая минует логику и объяснения. Он помогает сначала пробудить это состояние, а затем закрепить его, чтобы ты могла возвращаться в него снова и снова.")}
+                            </p>
+                            
+                            <div className="flex flex-col items-center gap-3 mt-2">
+                                <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg relative" style={{background: `${theme.accent}15`}}>
+                                    <div className="absolute inset-0 rounded-2xl animate-pulse-glow" style={{background: theme.accent, filter: 'blur(12px)'}}></div>
+                                    <Icon.Flame className="w-8 h-8 relative z-10" style={{color: theme.accent}} />
+                                </div>
+                                <div>
+                                    <p style={{color: theme.secondary}} className="text-[10px] uppercase tracking-widest mb-1 opacity-70">Аромат-помощник</p>
+                                    <h4 style={{color: theme.text}} className="serif text-xl font-bold">Свеча «{mandala.candle}»</h4>
+                                </div>
+                            </div>
+                            
+                            <a href={buyUrl} target="_blank" className="btn-primary mt-4 w-full py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg hover:-translate-y-1 flex items-center justify-center gap-3" style={{background: theme.accent, color: theme.buttonText}}>
+                                <span>Пробудить состояние</span>
+                                <Icon.ArrowRight className="w-4 h-4" />
+                            </a>
+                        </div>
+
+                        {/* GIFT BLOCK */}
+                        <div className="w-full max-w-md rounded-3xl p-8 border-2 mb-12 flex flex-col items-center text-center animate-fade-in-up" style={{borderColor: theme.accent, background: `${theme.accent}08`, animationDelay: '0.5s', animationFillMode: 'both'}}>
+                            <div className="flex items-center justify-center gap-3 mb-4">
+                                <div className="relative w-16 h-16 flex items-center justify-center">
+                                    <div className="absolute inset-0 rounded-full animate-pulse-glow" style={{background: theme.accent, filter: 'blur(12px)'}}></div>
+                                    <Icon.Gift className="w-8 h-8 relative z-10" style={{color: theme.accent}} />
+                                </div>
+                            </div>
+                            <h4 style={{color: theme.text}} className="text-xl serif font-bold uppercase tracking-wider mb-2">Мой подарок тебе</h4>
+                            
+                            <a href={practiceUrl} target="_blank" className="btn-primary mt-4 block w-full py-4 rounded-2xl text-center text-xs font-bold uppercase tracking-widest shadow-2xl transition-all hover:-translate-y-1 leading-relaxed" style={{background: theme.accent, color: theme.buttonText}}>
+                                Получить глубокую<br/>расшифровку и&nbsp;практику
+                            </a>
+                        </div>
+                        
+                        <button onClick={onRestart} style={{color: theme.text}} className="pb-24 opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.4em] animate-fade-in-up w-full" style={{animationDelay: '0.6s', animationFillMode: 'both'}}>
+                            <Icon.RotateCcw className="w-4 h-4" /> Начать заново
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+            const [step, setStep] = useState('intro');
+            const [theme, setTheme] = useState(THEMES.dark);
+            const [data, setData] = useState({ sphere: null, mandala: null });
+
+            const handleTheme = (mode) => { setTheme(THEMES[mode]); setStep('sphere'); };
+            const handleSphere = (s) => { setData(d => ({...d, sphere: s})); setStep('mandala'); };
+            const handleMandala = (m) => { setData(d => ({...d, mandala: m})); setStep('sync'); };
+            const handleRestart = () => { setStep('intro'); setData({ sphere: null, mandala: null }); };
+
+            return (
+                <div className="fixed inset-0 w-full h-full transition-colors duration-700 overflow-hidden" style={{background: theme.bgGradient}}>
+                    <div className="w-full h-full max-w-md mx-auto relative shadow-2xl overflow-hidden" style={{background: theme.bg}}>
+                        {step !== 'intro' && (
+                            <div className="absolute top-0 left-0 h-1 z-50 transition-all duration-700" 
+                                 style={{background: theme.accent, width: step==='sphere'?'33%':step==='mandala'?'66%':'100%'}}></div>
+                        )}
+                        {step === 'intro' && <ScreenIntro onSelectTheme={handleTheme} />}
+                        {step === 'sphere' && <ScreenSphere onSelect={handleSphere} theme={theme} />}
+                        {step === 'mandala' && <ScreenMandala sphereId={data.sphere?.id} onSelect={handleMandala} onBack={() => setStep('sphere')} theme={theme} />}
+                        {step === 'sync' && <ScreenSync onComplete={() => setStep('result')} theme={theme} />}
+                        {step === 'result' && <ScreenResult sphere={data.sphere} mandala={data.mandala} theme={theme} onRestart={handleRestart} />}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
