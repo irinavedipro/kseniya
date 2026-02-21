@@ -235,11 +235,15 @@
         };
 
         // --- 3. LOGIC ---
+        // Идеальное визуальное распределение мандал для гармоничной сетки 3-2-3
         const getMandalasForSphere = (sphereId) => {
-            const common = ['dignity', 'sensuality', 'balance', 'support', 'relax', 'liberation'];
-            if (sphereId === 'love') return [...common, 'clarity', 'passion']; 
-            if (sphereId === 'balance') return [...common, 'passion', 'freedom']; 
-            return [...common, 'clarity', 'movement']; 
+            if (sphereId === 'love') {
+                return ['relax', 'dignity', 'clarity', 'balance', 'passion', 'sensuality', 'support', 'liberation'];
+            }
+            if (sphereId === 'balance') {
+                return ['relax', 'dignity', 'freedom', 'balance', 'passion', 'sensuality', 'support', 'liberation'];
+            }
+            return ['relax', 'dignity', 'clarity', 'balance', 'movement', 'sensuality', 'support', 'liberation'];
         };
 
         // --- 4. TEXT MATRIX ---
