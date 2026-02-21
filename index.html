@@ -46,7 +46,8 @@
         
         /* Animations */
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes zoom-slow { from { transform: scale(1); } to { transform: scale(1.08); } }
+        /* Усиленный зум для финальной мандалы */
+        @keyframes zoom-slow { from { transform: scale(1); } to { transform: scale(1.12); } }
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.12); opacity: 1; } }
         
         /* Медленные, изящные кинематографичные искры с покачиванием по оси X */
@@ -363,7 +364,7 @@
                 </div>
                 
                 <div className="flex-1 overflow-y-auto scrollbar-hide pb-6 relative z-10 flex flex-col justify-center">
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 max-w-md mx-auto w-full">
                         {SPHERES.map((sphere, i) => (
                             <button 
                                 key={sphere.id} 
@@ -415,9 +416,9 @@
                         <p style={{color: theme.secondary}} className="text-[11px] font-light uppercase tracking-widest mt-1 opacity-80">Доверься чувствам. Выбирай телом.</p>
                     </div>
                     
-                    <div className="flex-1 flex flex-col items-center justify-center pb-6 w-full gap-3 sm:gap-4 relative z-10">
+                    <div className="flex-1 flex flex-col items-center justify-center pb-6 w-full gap-3 sm:gap-4 relative z-10 max-w-[360px] mx-auto">
                         {rows.map((row, rIdx) => (
-                            <div key={rIdx} className="flex justify-center gap-3 sm:gap-4 w-full">
+                            <div key={rIdx} className="flex justify-center items-center gap-3 sm:gap-4 w-full">
                                 {row.map((m, i) => {
                                     const imgBaseName = m.img || m.id;
                                     // Расчет задержки анимации для каждого элемента по порядку
@@ -496,15 +497,15 @@
                             <h2 style={{color: theme.accent}} className="text-5xl serif font-medium mb-10 drop-shadow-md text-balance">{mandala.title}</h2>
                         </div>
                         
-                        {/* RESULT MANDALA (Анимация появления отделена от эффекта пульсации для корректной работы) */}
-                        <div className="animate-fade-in-up w-full flex justify-center mb-10" style={{animationDelay: '0.2s', animationFillMode: 'both'}}>
+                        {/* RESULT MANDALA (Анимация всплытия и зума разделены для безупречной работы) */}
+                        <div className="w-full flex justify-center mb-10 animate-fade-in-up" style={{animationDelay: '0.2s', animationFillMode: 'both'}}>
                             <div 
-                                className="relative w-72 h-72 shrink-0 animate-zoom shadow-2xl rounded-full border-4 overflow-hidden" 
+                                className="relative w-64 h-64 sm:w-72 sm:h-72 shrink-0 shadow-2xl rounded-full border-4 overflow-hidden mx-auto" 
                                 style={{borderColor: `${theme.accent}30`, background: '#000'}}
                             >
                                  <img 
                                     src={`./images/${imgBaseName}_${theme.id}.png`} 
-                                    className="w-full h-full object-cover rounded-full" 
+                                    className="w-full h-full object-cover rounded-full animate-zoom" 
                                     onError={(e) => { 
                                         const fallback = `./images/dignity_${theme.id}.png`;
                                         if (e.target.src !== fallback) {
@@ -512,7 +513,7 @@
                                         }
                                     }} 
                                  />
-                                 <div className="absolute inset-0 rounded-full shadow-[0_0_70px_rgba(212,175,55,0.25)] animate-pulse pointer-events-none"></div>
+                                 <div className="absolute inset-0 rounded-full shadow-[0_0_70px_rgba(212,175,55,0.25)] pointer-events-none"></div>
                             </div>
                         </div>
 
