@@ -50,9 +50,9 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            object-position: center;
+            object-position: 50% 53.5%; /* Сдвиг картинки вниз для компенсации исходников */
             transform-origin: center;
-            transform: scale(1.06); /* Легкое укрупнение без обрезки краев */
+            transform: scale(1.06); 
             transition: transform 8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         .mandala-container:hover .img-center-scale {
@@ -141,7 +141,6 @@
         // Функция привязывает короткие предлоги к следующему слову
         const formatText = (str) => {
             if (!str) return '';
-            // Используем безопасный набор предлогов для исключения висячих строк
             return str.replace(/(^|\s)(в|без|до|для|за|через|над|по|из|у|около|под|о|про|на|к|перед|при|с|между|а|и|да|но|или|либо|что|как|если|то|же)\s/gi, '$1$2\u00A0');
         };
 
@@ -256,7 +255,6 @@
         };
 
         // --- 3. LOGIC ---
-        // Идеальное визуальное распределение мандал для гармоничной сетки 3-2-3
         const getMandalasForSphere = (sphereId) => {
             if (sphereId === 'love') {
                 return ['relax', 'dignity', 'clarity', 'balance', 'passion', 'sensuality', 'support', 'liberation'];
@@ -521,7 +519,7 @@
                             <h2 style={{color: theme.accent}} className="text-5xl serif font-medium mb-10 drop-shadow-md text-balance">{mandala.title}</h2>
                         </div>
                         
-                        {/* RESULT MANDALA (Анимация всплытия и увеличенного зума разделены для безупречной работы) */}
+                        {/* RESULT MANDALA */}
                         <div className="w-full flex justify-center items-center mb-10 animate-fade-in-up" style={{animationDelay: '0.2s', animationFillMode: 'both'}}>
                             <div 
                                 className="relative w-[65vw] h-[65vw] max-w-[280px] max-h-[280px] shrink-0 shadow-2xl rounded-full border-4 overflow-hidden mx-auto flex items-center justify-center" 
@@ -529,7 +527,8 @@
                             >
                                  <img 
                                     src={`./images/${imgBaseName}_${theme.id}.png`} 
-                                    className="block w-full h-full object-cover object-center animate-zoom" 
+                                    className="block w-full h-full object-cover animate-zoom" 
+                                    style={{ objectPosition: '50% 53.5%' }}
                                     onError={(e) => { 
                                         const fallback = `./images/dignity_${theme.id}.png`;
                                         if (e.target.src !== fallback) {
