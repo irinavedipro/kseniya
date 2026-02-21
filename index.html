@@ -44,10 +44,21 @@
         .text-pretty { text-wrap: pretty; }
         .text-balance { text-wrap: balance; }
         
+        /* Центрирование и масштаб мандал внутри круга */
+        .img-center-scale {
+            object-fit: cover;
+            object-position: center center;
+            transform: scale(1.28); /* Изначально делаем узор крупнее, обрезая пустой фон */
+            transition: transform 8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .mandala-container:hover .img-center-scale {
+            transform: scale(1.4); /* Плавное увеличение при наведении */
+        }
+        
         /* Animations */
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        /* Усиленный зум для финальной мандалы */
-        @keyframes zoom-slow { from { transform: scale(1); } to { transform: scale(1.12); } }
+        /* Усиленный зум для финальной мандалы: стартует крупным (1.28) и плавно растет (1.38) */
+        @keyframes zoom-slow { from { transform: scale(1.28); } to { transform: scale(1.38); } }
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.12); opacity: 1; } }
         
         /* Медленные, изящные кинематографичные искры с покачиванием по оси X */
@@ -67,7 +78,7 @@
         }
 
         .animate-fade-in-up { animation: fade-in-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-        .animate-zoom { animation: zoom-slow 20s ease-in-out infinite alternate; }
+        .animate-zoom { animation: zoom-slow 8s ease-in-out infinite alternate; }
         .animate-breathe { animation: breathe 5s ease-in-out infinite; }
         .animate-spin-slow { animation: spin-slow 20s linear infinite; }
         .animate-spin-reverse { animation: spin-reverse 25s linear infinite; }
@@ -121,7 +132,8 @@
         // Функция привязывает короткие предлоги к следующему слову
         const formatText = (str) => {
             if (!str) return '';
-            return str.replace(/(^|\s)(в|без|до|для|за|через|над|по|из|у|около|под|о|про|на|к|перед|при|с|между|а|и|да|но|или|либо|что|как|если|то|ни|же)\s/gi, '$1$2\u00A0');
+            // Используем безопасный набор предлогов для исключения висячих строк
+            return str.replace(/(^|\s)(в|без|до|для|за|через|над|по|из|у|около|под|о|про|на|к|перед|при|с|между|а|и|да|но|или|либо|что|как|если|то|же)\s/gi, '$1$2\u00A0');
         };
 
         // --- УМНЫЙ ЛОГОТИП (защита от ошибок регистра на сервере) ---
@@ -361,14 +373,14 @@
                     <MagicalSparks />
                 </div>
 
-                <div className="mb-6 shrink-0 relative z-10">
+                <div className="mb-6 shrink-0 relative z-10 w-full max-w-[420px] mx-auto text-center">
                     <span style={{color: theme.accent}} className="text-[10px] tracking-[0.3em] uppercase block mb-2 font-bold text-center">ЭТАП 1 — ВЫБОР СФЕРЫ ЖИЗНИ</span>
                     <h2 style={{color: theme.text}} className="text-2xl leading-tight serif font-medium text-center text-balance">Выбери сферу жизни,<br/>в которой ты хочешь движения и улучшений</h2>
                     <p style={{color: theme.secondary}} className="text-xs mt-2 italic opacity-80 font-light text-center text-pretty">Без анализа. Выбирай интуитивно то, что сейчас важно.</p>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto scrollbar-hide pb-6 relative z-10 flex flex-col justify-center">
-                    <div className="flex flex-col gap-3 max-w-md mx-auto w-full">
+                <div className="flex-1 overflow-y-auto scrollbar-hide pb-6 relative z-10 flex flex-col justify-center items-center w-full">
+                    <div className="flex flex-col gap-3 w-full max-w-sm">
                         {SPHERES.map((sphere, i) => (
                             <button 
                                 key={sphere.id} 
@@ -414,24 +426,23 @@
                         <Icon.ArrowLeft className="w-5 h-5" />
                     </button>
                     
-                    <div className="mb-2 shrink-0 text-center px-6 mt-4 relative z-10 animate-fade-in-up">
+                    <div className="mb-4 shrink-0 text-center px-6 mt-4 relative z-10 animate-fade-in-up w-full max-w-[420px] mx-auto">
                         <span style={{color: theme.accent}} className="text-[10px] tracking-[0.3em] uppercase block mb-1 font-bold">ЭТАП 2 — ВЫБОР МАНДАЛЫ</span>
                         <h2 style={{color: theme.text}} className="text-xl leading-tight serif font-medium mb-1 text-balance">Посмотри на мандалы и выбери ту, которая откликается</h2>
                         <p style={{color: theme.secondary}} className="text-[11px] font-light uppercase tracking-widest mt-1 opacity-80">Доверься чувствам. Выбирай телом.</p>
                     </div>
                     
-                    <div className="flex-1 flex flex-col items-center justify-center pb-6 w-full gap-3 sm:gap-4 relative z-10 max-w-[360px] mx-auto">
+                    <div className="flex-1 flex flex-col items-center justify-center pb-6 w-full gap-4 relative z-10">
                         {rows.map((row, rIdx) => (
-                            <div key={rIdx} className="flex justify-center items-center gap-3 sm:gap-4 w-full">
+                            <div key={rIdx} className="flex justify-center items-center gap-4 w-full">
                                 {row.map((m, i) => {
                                     const imgBaseName = m.img || m.id;
-                                    // Расчет задержки анимации для каждого элемента по порядку
                                     const absoluteIndex = rIdx === 0 ? i : (rIdx === 1 ? i + 3 : i + 5);
                                     return (
                                         <div 
                                             key={m.id} 
                                             onClick={() => onSelect(m)} 
-                                            className={`mandala-container group shadow-xl ${glowClass} animate-fade-in-up w-[27vw] max-w-[110px] aspect-square rounded-full`}
+                                            className={`mandala-container group shadow-xl ${glowClass} animate-fade-in-up w-[26vw] h-[26vw] max-w-[105px] max-h-[105px] rounded-full shrink-0 flex items-center justify-center`}
                                             style={{ 
                                                 animationDelay: `${absoluteIndex * 0.05}s`, 
                                                 background: theme.id === 'dark' ? '#121217' : '#fff',
@@ -441,7 +452,7 @@
                                             <img 
                                                 src={`./images/${imgBaseName}_${theme.id}.png`} 
                                                 alt={m.title} 
-                                                className="w-full h-full object-cover transition-transform duration-[8s] group-hover:scale-115" 
+                                                className="w-full h-full img-center-scale rounded-full" 
                                                 onError={(e) => { 
                                                     const fallback = `./images/dignity_${theme.id}.png`;
                                                     if (e.target.src !== fallback) {
@@ -493,23 +504,23 @@
             const imgBaseName = mandala.img || mandala.id;
 
             return (
-                <div key="result-screen" className="h-full w-full overflow-y-auto scrollbar-hide relative">
-                    <div className="flex flex-col items-center pt-8 pb-16 px-6 min-h-full text-center">
+                <div key="result-screen" className="h-full w-full overflow-y-auto scrollbar-hide relative flex flex-col items-center">
+                    <div className="flex flex-col items-center pt-8 pb-16 px-6 min-h-full text-center w-full max-w-[420px] mx-auto">
                         
                         <div className="animate-fade-in-up w-full text-center" style={{animationDelay: '0.1s', animationFillMode: 'both'}}>
                             <p style={{color: theme.secondary}} className="text-xs sm:text-sm tracking-[0.3em] uppercase mb-4 opacity-80 font-bold">Тебе не хватает сейчас</p>
                             <h2 style={{color: theme.accent}} className="text-5xl serif font-medium mb-10 drop-shadow-md text-balance">{mandala.title}</h2>
                         </div>
                         
-                        {/* RESULT MANDALA (Анимация всплытия и зума разделены для безупречной работы) */}
-                        <div className="w-full flex justify-center mb-10 animate-fade-in-up" style={{animationDelay: '0.2s', animationFillMode: 'both'}}>
+                        {/* RESULT MANDALA (Анимация всплытия и увеличенного зума разделены для безупречной работы) */}
+                        <div className="w-full flex justify-center items-center mb-10 animate-fade-in-up" style={{animationDelay: '0.2s', animationFillMode: 'both'}}>
                             <div 
-                                className="relative w-64 h-64 sm:w-72 sm:h-72 shrink-0 shadow-2xl rounded-full border-4 overflow-hidden mx-auto" 
+                                className="relative w-[65vw] h-[65vw] max-w-[280px] max-h-[280px] shrink-0 shadow-2xl rounded-full border-4 overflow-hidden mx-auto flex items-center justify-center" 
                                 style={{borderColor: `${theme.accent}30`, background: '#000'}}
                             >
                                  <img 
                                     src={`./images/${imgBaseName}_${theme.id}.png`} 
-                                    className="w-full h-full object-cover rounded-full animate-zoom" 
+                                    className="w-full h-full object-cover object-center rounded-full animate-zoom" 
                                     onError={(e) => { 
                                         const fallback = `./images/dignity_${theme.id}.png`;
                                         if (e.target.src !== fallback) {
@@ -522,7 +533,7 @@
                         </div>
 
                         {/* DESCRIPTION BLOCK */}
-                        <div className="w-full max-w-md rounded-3xl p-8 mb-8 shadow-xl border text-center animate-fade-in-up" style={{background: theme.cardBg, borderColor: theme.cardBorder, animationDelay: '0.3s', animationFillMode: 'both'}}>
+                        <div className="w-full rounded-3xl p-8 mb-8 shadow-xl border text-center animate-fade-in-up" style={{background: theme.cardBg, borderColor: theme.cardBorder, animationDelay: '0.3s', animationFillMode: 'both'}}>
                             <p style={{color: theme.text}} className="text-base leading-relaxed opacity-90 mb-6 font-bold text-pretty">
                                 {formatText(`Ты можешь много делать в сфере «${sphere.title.toLowerCase()}», но если внутри не хватает этого состояния, ощущение, что пазл не складывается.`)}
                             </p>
@@ -535,7 +546,7 @@
                         </div>
 
                         {/* PRODUCT BLOCK */}
-                        <div className="w-full max-w-md rounded-3xl p-8 mb-10 border flex flex-col items-center text-center gap-6 animate-fade-in-up" style={{background: theme.id==='light' ? '#fff' : 'rgba(255,255,255,0.03)', borderColor: theme.cardBorder, animationDelay: '0.4s', animationFillMode: 'both'}}>
+                        <div className="w-full rounded-3xl p-8 mb-10 border flex flex-col items-center text-center gap-6 animate-fade-in-up" style={{background: theme.id==='light' ? '#fff' : 'rgba(255,255,255,0.03)', borderColor: theme.cardBorder, animationDelay: '0.4s', animationFillMode: 'both'}}>
                             <p style={{color: theme.text}} className="text-sm font-light leading-relaxed opacity-80 text-pretty">
                                 {formatText("Аромат влияет на ту часть нас, которая минует логику и объяснения. Он помогает сначала пробудить это состояние, а затем закрепить его, чтобы ты могла возвращаться в него снова и снова.")}
                             </p>
@@ -558,7 +569,7 @@
                         </div>
 
                         {/* GIFT BLOCK */}
-                        <div className="w-full max-w-md rounded-3xl p-8 border-2 mb-12 animate-fade-in-up" style={{borderColor: theme.accent, background: `${theme.accent}08`, animationDelay: '0.5s', animationFillMode: 'both'}}>
+                        <div className="w-full rounded-3xl p-8 border-2 mb-12 animate-fade-in-up" style={{borderColor: theme.accent, background: `${theme.accent}08`, animationDelay: '0.5s', animationFillMode: 'both'}}>
                             <div className="flex items-center justify-center gap-3 mb-5">
                                 <div className="relative w-16 h-16 flex items-center justify-center">
                                     <div className="absolute inset-0 rounded-full animate-pulse-glow" style={{background: theme.accent, filter: 'blur(12px)'}}></div>
