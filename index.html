@@ -46,19 +46,28 @@
         
         /* Центрирование и масштаб мандал внутри круга */
         .img-center-scale {
+            display: block;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            object-position: center center;
-            transform: scale(1.28); /* Изначально делаем узор крупнее, обрезая пустой фон */
+            object-position: center;
+            transform-origin: center;
+            transform: scale(1.06); /* Легкое укрупнение без обрезки краев */
             transition: transform 8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         .mandala-container:hover .img-center-scale {
-            transform: scale(1.4); /* Плавное увеличение при наведении */
+            transform: scale(1.14); /* Плавное увеличение при наведении */
         }
         
         /* Animations */
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        /* Усиленный зум для финальной мандалы: стартует крупным (1.28) и плавно растет (1.38) */
-        @keyframes zoom-slow { from { transform: scale(1.28); } to { transform: scale(1.38); } }
+        
+        /* Усиленный зум для финальной мандалы: строгая центровка и бережный масштаб */
+        @keyframes zoom-slow { 
+            0% { transform: scale(1.06); transform-origin: center; } 
+            100% { transform: scale(1.14); transform-origin: center; } 
+        }
+        
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.12); opacity: 1; } }
         
         /* Медленные, изящные кинематографичные искры с покачиванием по оси X */
@@ -442,7 +451,7 @@
                                         <div 
                                             key={m.id} 
                                             onClick={() => onSelect(m)} 
-                                            className={`mandala-container group shadow-xl ${glowClass} animate-fade-in-up w-[26vw] h-[26vw] max-w-[105px] max-h-[105px] rounded-full shrink-0 flex items-center justify-center`}
+                                            className={`mandala-container group shadow-xl ${glowClass} animate-fade-in-up w-[26vw] h-[26vw] max-w-[105px] max-h-[105px] rounded-full shrink-0 flex items-center justify-center overflow-hidden`}
                                             style={{ 
                                                 animationDelay: `${absoluteIndex * 0.05}s`, 
                                                 background: theme.id === 'dark' ? '#121217' : '#fff',
@@ -452,7 +461,7 @@
                                             <img 
                                                 src={`./images/${imgBaseName}_${theme.id}.png`} 
                                                 alt={m.title} 
-                                                className="w-full h-full img-center-scale rounded-full" 
+                                                className="img-center-scale" 
                                                 onError={(e) => { 
                                                     const fallback = `./images/dignity_${theme.id}.png`;
                                                     if (e.target.src !== fallback) {
@@ -520,7 +529,7 @@
                             >
                                  <img 
                                     src={`./images/${imgBaseName}_${theme.id}.png`} 
-                                    className="w-full h-full object-cover object-center rounded-full animate-zoom" 
+                                    className="block w-full h-full object-cover object-center animate-zoom" 
                                     onError={(e) => { 
                                         const fallback = `./images/dignity_${theme.id}.png`;
                                         if (e.target.src !== fallback) {
